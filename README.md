@@ -36,3 +36,40 @@ F --> K[Analytics APIs]
 K --> L[Next.js Dashboard]
 
 J --> L
+
+# ER Diagram
+
+```mermaid
+erDiagram
+
+EMAILS {
+
+    int id
+    string message_id
+    string sender
+    string subject
+    text body
+    string timestamp
+    string thread_id
+
+    string sentiment
+    string priority
+
+    text summary
+}
+
+KNOWLEDGE_BASE {
+
+    string document_name
+    text content
+    string category
+}
+
+AGENT_TRACE {
+
+    int id
+    string thread_type
+    text thought
+    text action
+    text observation
+}
