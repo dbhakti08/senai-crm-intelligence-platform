@@ -1,188 +1,111 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
-from app.schemas.email_schema import EmailIngest
+from app.db.database import SessionLocal
 from app.models.email_model import Email
-from app.db.session import get_db
-from app.services.classifier_service import (
-    classify_sentiment,
-    classify_priority
-)
-from app.services.summary_service import generate_summary
+
 from app.services.reply_service import generate_ai_reply
-from app.services.reply_service import generate_ai_reply
+from app.services.rag_service import search_knowledge_base
+from app.services.agent_service import generate_agent_trace
 
 router = APIRouter()
 
 
-@router.post("/api/ingest")
-def ingest_email(email: EmailIngest, db: Session = Depends(get_db)):
+@router.get("/api/emails")
+def get_emails():
 
-    new_email = Email(
-        message_id=email.message_id,
-        thread_id=email.thread_id,
-        sender=email.sender,
-        subject=email.subject,
-        body=email.body,
-        timestamp=email.timestamp,
-        sentiment=classify_sentiment(email.body),
-        priority=classify_priority(email.body),
-        summary=generate_summary(email.body)
-    ) 
+    db: Session = SessionLocal()
 
-    try:
-        db.add(new_email)
-        db.commit()
-        db.refresh(new_email)
+    emails = db.query(Email).all()
 
-        return {
-            "status": "success",
-            "message": "Email stored successfully"
-        }
+    return emails
 
-    except IntegrityError:
-        db.rollback()
 
-        return {
-            "status": "duplicate",
-            "message": "Email already exists"
-        }
-@router.get("/api/thread/{thread_id}")
-def get_thread(thread_id: str, db: Session = Depends(get_db)):
+@router.get("/api/search")
+def search_emails(query: str):
+
+    db: Session = SessionLocal()
+
+    emails = db.query(Email).filter(
+        Email.subject.contains(query)
+    ).all()
+
+    return {
+        "results": emails
+    }
+
+
+@router.get("/api/threads/{thread_id}")
+def get_thread(thread_id: str):
+
+    db: Session = SessionLocal()
 
     emails = db.query(Email).filter(
         Email.thread_id == thread_id
     ).all()
 
-    return {
-        "thread_id": thread_id,
-        "emails": emails
-    }
-@router.get("/api/emails/high-priority")
-def get_high_priority_emails(db: Session = Depends(get_db)):
+    return emails
 
-    emails = db.query(Email).filter(
-        Email.priority == "high"
-    ).all()
 
-    return {
-        "count": len(emails),
-        "emails": emails
-    }
-@router.get("/api/search")
-def search_emails(query: str, db: Session = Depends(get_db)):
+@router.post("/api/respond/{email_id}")
+def generate_reply(email_id: int):
 
-    emails = db.query(Email).filter(
-        Email.body.ilike(f"%{query}%")
-    ).all()
+    db: Session = SessionLocal()
+
+    email = db.query(Email).filter(
+        Email.id == email_id
+    ).first()
+
+    if not email:
+
+        return {
+            "error": "Email not found"
+        }
+
+    reply = generate_ai_reply(email.body)
 
     return {
-        "query": query,
-        "count": len(emails),
-        "results": emails
+        "reply": reply
     }
+
+
 @router.get("/api/analytics/overview")
-def analytics_overview(db: Session = Depends(get_db)):
+def analytics_overview():
+
+    db: Session = SessionLocal()
 
     total_emails = db.query(Email).count()
+
+    negative_emails = db.query(Email).filter(
+        Email.sentiment == "negative"
+    ).count()
 
     high_priority = db.query(Email).filter(
         Email.priority == "high"
     ).count()
 
-    negative_sentiment = db.query(Email).filter(
-        Email.sentiment == "negative"
-    ).count()
-
     return {
         "total_emails": total_emails,
-        "high_priority_emails": high_priority,
-        "negative_sentiment_emails": negative_sentiment
+        "negative_emails": negative_emails,
+        "high_priority": high_priority
     }
-@router.get("/api/emails")
-def get_all_emails(db: Session = Depends(get_db)):
 
-    emails = db.query(Email).all()
 
-    return emails
-@router.get("/api/analytics/sentiments")
-def sentiment_analytics(db: Session = Depends(get_db)):
+@router.get("/api/rag/search")
+def rag_search(query: str):
 
-    positive = db.query(Email).filter(
-        Email.sentiment == "positive"
-    ).count()
-
-    negative = db.query(Email).filter(
-        Email.sentiment == "negative"
-    ).count()
-
-    neutral = db.query(Email).filter(
-        Email.sentiment == "neutral"
-    ).count()
-
-    return [
-        {"name": "Positive", "count": positive},
-        {"name": "Negative", "count": negative},
-        {"name": "Neutral", "count": neutral},
-    ]
-@router.get("/api/analytics/sentiments")
-def sentiment_analytics(db: Session = Depends(get_db)):
-
-    positive = db.query(Email).filter(
-        Email.sentiment == "positive"
-    ).count()
-
-    negative = db.query(Email).filter(
-        Email.sentiment == "negative"
-    ).count()
-
-    neutral = db.query(Email).filter(
-        Email.sentiment == "neutral"
-    ).count()
-
-    return [
-        {"name": "Positive", "count": positive},
-        {"name": "Negative", "count": negative},
-        {"name": "Neutral", "count": neutral},
-    ]
-@router.get("/api/reply/{thread_id}")
-def generate_reply(thread_id: str, db: Session = Depends(get_db)):
-
-    emails = db.query(Email).filter(
-        Email.thread_id == thread_id
-    ).all()
-
-    if not emails:
-        return {
-            "reply": "No conversation found."
-        }
-
-    latest_email = emails[-1]
-
-    reply = generate_ai_reply(latest_email.body)
+    results = search_knowledge_base(query)
 
     return {
-        "thread_id": thread_id,
-        "reply": reply
+        "query": query,
+        "results": results
     }
-@router.get("/api/reply/{thread_id}")
-def generate_reply(thread_id: str, db: Session = Depends(get_db)):
+@router.get("/api/agent/trace")
+def agent_trace(thread_type: str):
 
-    emails = db.query(Email).filter(
-        Email.thread_id == thread_id
-    ).all()
-
-    if not emails:
-        return {
-            "reply": "No conversation found."
-        }
-
-    latest_email = emails[-1]
-
-    reply = generate_ai_reply(latest_email.body)
+    trace = generate_agent_trace(thread_type)
 
     return {
-        "thread_id": thread_id,
-        "reply": reply
+        "thread_type": thread_type,
+        "trace": trace
     }

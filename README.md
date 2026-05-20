@@ -1,131 +1,38 @@
 # SenAI CRM Intelligence Platform
 
-AI-powered CRM intelligence platform for customer support operations.
-
-Built using:
-- FastAPI
-- PostgreSQL
-- Next.js
-- Tailwind CSS
-- SQLAlchemy
-
----
-
-# Features
-
-## AI Email Intelligence
+AI-powered enterprise CRM operations platform with:
+- Email ingestion
+- RAG-based policy retrieval
+- Agentic escalation workflows
+- AI summarization
 - Sentiment analysis
-- Priority classification
-- Email summarization
-- AI-generated support replies
-
----
-
-## CRM Operations
-- Email ingestion APIs
-- Conversation thread viewer
-- Search functionality
-- High-priority escalation tracking
-
----
-
-## Analytics Dashboard
-- Total emails overview
-- Negative sentiment tracking
-- Priority monitoring
-- Sentiment visualization charts
+- Operational analytics dashboard
 
 ---
 
 # Architecture
 
-Frontend:
-- Next.js
-- Tailwind CSS
-- Recharts
+```mermaid
+flowchart TD
 
-Backend:
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
+A[Enterprise Email Dataset] --> B[FastAPI Ingestion Pipeline]
 
-AI Layer:
-- Rule-based NLP pipeline
-- Sentiment classification
-- AI response generation
+B --> C[Heuristic Classification]
+C --> D[Sentiment Analysis]
+C --> E[Priority Detection]
 
----
+B --> F[PostgreSQL Database]
 
-# API Endpoints
+G[Knowledge Base Markdown Docs] --> H[RAG Retrieval Engine]
 
-## Email APIs
-- POST /api/ingest
-- GET /api/emails
-- GET /api/thread/{thread_id}
+H --> I[Agent Reasoning Engine]
 
-## Search APIs
-- GET /api/search
+F --> I
 
-## Analytics APIs
-- GET /api/analytics/overview
-- GET /api/analytics/sentiments
+I --> J[AI Response Generator]
 
-## AI APIs
-- GET /api/reply/{thread_id}
+F --> K[Analytics APIs]
 
----
+K --> L[Next.js Dashboard]
 
-# Screenshots
-
-## Dashboard
-(Add screenshot here)
-
-## AI Reply Generation
-(Add screenshot here)
-
----
-
-# Local Setup
-
-## Backend
-
-```bash
-cd backend
-
-python3 -m venv venv
-
-source venv/bin/activate
-
-pip install -r requirements.txt
-
-uvicorn app.main:app --reload
-```
-
----
-
-## Frontend
-
-```bash
-cd frontend
-
-npm install
-
-npm run dev
-```
-
----
-
-# Future Improvements
-
-- OpenAI/Gemini integration
-- Vector database support
-- Semantic search
-- RAG pipelines
-- Multi-user authentication
-- Real-time notifications
-
----
-
-# Author
-
-Bhakti Dudile
+J --> L
