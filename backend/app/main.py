@@ -1,13 +1,17 @@
 from fastapi import FastAPI
-from app.api.email_routes import router as email_router
-from app.db.database import engine, Base
-from app.models.email_model import Email
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.email_routes import router as email_router
+
+from app.db.database import engine, Base
 
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="SenAI CRM Intelligence Platform")
+app = FastAPI(
+    title="SenAI CRM Intelligence Platform"
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -19,7 +23,10 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"message": "SenAI CRM Backend Running"}
+
+    return {
+        "message": "SenAI CRM Backend Running"
+    }
 
 
 app.include_router(email_router)
